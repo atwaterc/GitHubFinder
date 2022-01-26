@@ -9,12 +9,15 @@ const GITHUB_TOKEN = process.env.REACT_APP_GITHUB_TOKEN;
 export const GithubProvider = ({ children }) => {
 	const initialState = {
 		users: [],
+		user: {},
+		repos: [],
 		loading: false,
 	};
 
 	// dispatch an action to our reducer
 	const [state, dispatch] = useReducer(githubReducer, initialState);
 
+	// search users
 	const searchUsers = async (text) => {
 		setLoading();
 
@@ -35,6 +38,56 @@ export const GithubProvider = ({ children }) => {
 		});
 	};
 
+	// search single user
+	const getUser = async (login) => {
+		setLoading();
+
+		const response = await fetch(`${GITHUB_URL}/users/${login}`, {
+			headers: {
+				Authorization: `token ${GITHUB_TOKEN}`,
+			},
+		});
+
+		if (response.stats === 404) {
+			window.location = '/notfound';
+		} else {
+			const data = await response.json();
+
+			dispatch({
+				type: 'GET_USER',
+				payload: data,
+			});
+		}
+	};
+
+	// get user repos
+	const getUserRepos = async (login) => {
+		setLoading();
+
+		const params = new URLSearchParams({
+			sort: 'created',
+			per_page: 10,
+		});
+
+		const response = await fetch(
+			`${GITHUB_URL}/users/${login}/repos?${params}`,
+			{
+				headers: {
+					Authorization: `token ${GITHUB_TOKEN}`,
+				},
+			}
+		);
+		const data = await response.json();
+
+		dispatch({
+			type: 'GET_REPOS',
+			payload: data,
+		});
+	};
+
+	// remove users off screen
+	const removeUsers = () => dispatch({ type: 'REMOVE_USERS' });
+
 	// set loading
 	const setLoading = () => dispatch({ type: 'SET_LOADING' });
 
@@ -42,8 +95,13 @@ export const GithubProvider = ({ children }) => {
 		<GithubContext.Provider
 			value={{
 				users: state.users,
+				user: state.user,
+				repos: state.repos,
 				loading: state.loading,
 				searchUsers,
+				removeUsers,
+				getUser,
+				getUserRepos,
 			}}>
 			{children}
 		</GithubContext.Provider>
